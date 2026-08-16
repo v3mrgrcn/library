@@ -660,7 +660,7 @@ window.KUTUPHANE_KITAPLARI = [
     "id": 83,
     "title": "NUTUK",
     "author": "MUSTAFA KEMAL ATATÜRK",
-    "publisher": "İŞ BANKASI",
+    "publisher": "İŞBANKASI",
     "isbn": "978-9944-88-834-9",
     "pages": 599
   },
@@ -1979,7 +1979,7 @@ window.KUTUPHANE_KITAPLARI = [
   {
     "id": 248,
     "title": "BAY MUANNİT SAHTEGİ'NİN NOTLARI",
-    "author": "VÜS'AT O. BENER",
+    "author": "",
     "publisher": "YKY",
     "isbn": "978-975-08-0616-6",
     "pages": 81

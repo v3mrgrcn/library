@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#12100d">
+<meta name="application-name" content="Dijital Kütüphane">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kütüphanem">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <title>Emre'nin Dijital Kütüphanesi</title>
 <style>
 :root{
@@ -650,6 +659,31 @@ h1{font-family:Georgia,"Times New Roman",serif;font-weight:500;font-size:clamp(2
   .form-field.full{grid-column:auto}
 }
 
+
+/* iOS Home Screen / PWA */
+html{
+  background:#12100d;
+}
+body{
+  -webkit-tap-highlight-color:transparent;
+}
+@media (display-mode: standalone){
+  body{
+    min-height:100dvh;
+  }
+}
+body.ios-standalone{
+  min-height:100dvh;
+}
+body.ios-standalone .toolbar{
+  top:0;
+}
+.book,.view-btn,.archive-action,.mobile-filter-toggle,.clear,.close,.add-close{
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-touch-callout:none;
+}
+
 </style>
 </head>
 <body>
@@ -1243,7 +1277,7 @@ function openDetail(b){
   $("#detailMeta").innerHTML=[
     b.publisher && `Yayınevi: ${esc(b.publisher)}`,
     b.isbn && `ISBN: ${esc(b.isbn)}`,
-    b.pages && `${esc(b.pages)} sayfa`    
+    b.pages && `${esc(b.pages)} sayfa`
   ].filter(Boolean).map(x=>`<span>${x}</span>`).join("");
   setFallback(b);loadNote(b);
   $("#detail").classList.add("open");$("#detail").setAttribute("aria-hidden","false");document.body.style.overflow="hidden";
@@ -1433,6 +1467,21 @@ if(!BOOKS.length){
   stats();
   render();
 }
+// iOS / installed web-app mode detection.
+(function(){
+  const standalone =
+    window.matchMedia?.("(display-mode: standalone)")?.matches ||
+    window.navigator.standalone === true;
+  if(standalone) document.body.classList.add("ios-standalone");
+
+  // Service workers require a web origin; gracefully skip when this file is opened via file://.
+  if("serviceWorker" in navigator && (location.protocol==="https:" || location.hostname==="localhost")){
+    window.addEventListener("load",()=>{
+      navigator.serviceWorker.register("./service-worker.js").catch(()=>{});
+    });
+  }
+})();
+
 </script>
 </body>
 </html>
