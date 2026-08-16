@@ -684,6 +684,18 @@ body.ios-standalone .toolbar{
   -webkit-touch-callout:none;
 }
 
+
+.detail-actions{
+  display:flex;
+  margin:0 0 28px;
+}
+.detail-actions .archive-action{
+  width:100%;
+}
+@media(max-width:700px){
+  .detail-actions{margin-bottom:22px}
+}
+
 </style>
 </head>
 <body>
@@ -754,12 +766,58 @@ body.ios-standalone .toolbar{
         <h2 id="detailTitle"></h2>
         <div class="byline" id="detailAuthor"></div>
         <div class="meta" id="detailMeta"></div>
+        <div class="detail-actions">
+          <button class="archive-action" id="editBookBtn" type="button">Kitap Bilgilerini Güncelle</button>
+        </div>
 <section class="section">
           <h3>Kütüphane notum</h3>
           <textarea class="note" id="note" placeholder="Bu kitapla ilgili kendi notunu buraya yazabilirsin. Not tarayıcında saklanır."></textarea>
           <div class="note-status" id="noteStatus"></div>
         </section>
       </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="add-modal" id="editBookModal" aria-hidden="true">
+  <div class="add-card" role="dialog" aria-modal="true" aria-labelledby="editBookTitle">
+    <button class="add-close" id="editBookClose" type="button" aria-label="Kapat">×</button>
+    <div class="add-kicker">Arşiv kaydını düzelt</div>
+    <h2 id="editBookTitle">Kitap Bilgilerini Güncelle</h2>
+    <form id="editBookForm">
+      <input type="hidden" id="editBookId">
+      <div class="form-grid">
+        <label class="form-field full">
+          <span>Kitap Adı *</span>
+          <input id="editTitle" required autocomplete="off">
+        </label>
+        <label class="form-field">
+          <span>Yazar Adı *</span>
+          <input id="editAuthor" required autocomplete="off">
+        </label>
+        <label class="form-field">
+          <span>Yayınevi</span>
+          <input id="editPublisher" autocomplete="off">
+        </label>
+        <label class="form-field">
+          <span>ISBN Numarası</span>
+          <input id="editIsbn" autocomplete="off" inputmode="text">
+        </label>
+        <label class="form-field">
+          <span>Sayfa Sayısı</span>
+          <input id="editPages" autocomplete="off" inputmode="numeric" type="number" min="1" step="1">
+        </label>
+      </div>
+      <div class="form-message" id="editBookMessage"></div>
+      <div class="form-actions">
+        <button class="archive-action" id="cancelEditBook" type="button">Vazgeç</button>
+        <button class="archive-action primary" type="submit">Değişiklikleri Kaydet</button>
+      </div>
+    </form>
+    <div class="save-explainer">
+      Değişiklik bu tarayıcıda saklanır ve kütüphanede hemen güncellenir.
+      Kalıcı referans dosyan için <strong>Kutuphane_Verisi.js indir</strong> düğmesini kullan.
     </div>
   </div>
 </div>
@@ -839,6 +897,43 @@ function saveLocalAdditions(){
   localStorage.setItem(LOCAL_ADDITIONS_KEY,JSON.stringify(additions));
 }
 loadLocalAdditions();
+
+const LOCAL_EDITS_KEY="kutuphane-local-edits-v1";
+
+function loadLocalEdits(){
+  let edits={};
+  try{
+    const raw=localStorage.getItem(LOCAL_EDITS_KEY);
+    edits=raw ? JSON.parse(raw) : {};
+  }catch(e){ edits={}; }
+
+  if(!edits || typeof edits!=="object") return;
+
+  for(const [id,patch] of Object.entries(edits)){
+    const book=BOOKS.find(b=>String(b.id)===String(id));
+    if(book && patch && typeof patch==="object"){
+      Object.assign(book,patch);
+    }
+  }
+}
+function saveBookEdit(book){
+  let edits={};
+  try{
+    const raw=localStorage.getItem(LOCAL_EDITS_KEY);
+    edits=raw ? JSON.parse(raw) : {};
+  }catch(e){ edits={}; }
+
+  edits[String(book.id)]={
+    title:book.title,
+    author:book.author,
+    publisher:book.publisher,
+    isbn:book.isbn,
+    pages:book.pages
+  };
+  localStorage.setItem(LOCAL_EDITS_KEY,JSON.stringify(edits));
+}
+loadLocalEdits();
+
 const $ = s => document.querySelector(s);
 const library = $("#library");
 const qTitle = $("#qTitle"), qAuthor = $("#qAuthor"), qPublisher = $("#qPublisher");
@@ -1328,6 +1423,41 @@ function exportReferenceJS(){
   setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 
+
+function openEditBook(){
+  if(!activeBook) return;
+  $("#editBookId").value=activeBook.id;
+  $("#editTitle").value=activeBook.title||"";
+  $("#editAuthor").value=activeBook.author||"";
+  $("#editPublisher").value=activeBook.publisher||"";
+  $("#editIsbn").value=activeBook.isbn||"";
+  $("#editPages").value=activeBook.pages||"";
+  $("#editBookMessage").textContent="";
+  $("#editBookMessage").className="form-message";
+  $("#editBookModal").classList.add("open");
+  $("#editBookModal").setAttribute("aria-hidden","false");
+  document.body.style.overflow="hidden";
+  setTimeout(()=>$("#editTitle").focus(),80);
+}
+function closeEditBook(){
+  $("#editBookModal").classList.remove("open");
+  $("#editBookModal").setAttribute("aria-hidden","true");
+  document.body.style.overflow="";
+}
+function refreshActiveBookDetail(){
+  if(!activeBook) return;
+  $("#detailTitle").textContent=activeBook.title;
+  $("#detailAuthor").textContent=activeBook.author;
+  $("#detailMeta").innerHTML=[
+    activeBook.publisher && `Yayınevi: ${esc(activeBook.publisher)}`,
+    activeBook.isbn && `ISBN: ${esc(activeBook.isbn)}`,
+    activeBook.pages && `${esc(activeBook.pages)} sayfa`,
+    `Kapak: çok kaynaklı arama`
+  ].filter(Boolean).map(x=>`<span>${x}</span>`).join("");
+  setFallback(activeBook);
+  fetchExactCover(activeBook);
+}
+
 [qTitle,qAuthor,qPublisher].forEach(el=>el.addEventListener("input",render));
 $("#sortSelect").addEventListener("change",render);
 $("#shelfViewBtn").addEventListener("click",()=>{
@@ -1343,11 +1473,86 @@ $("#closeBtn").addEventListener("click",closeDetail);
 $("#detail").addEventListener("click",e=>{if(e.target===$("#detail"))closeDetail()});
 document.addEventListener("keydown",e=>{
   if(e.key==="Escape"){
-    if($("#addBookModal").classList.contains("open")) closeAddBook();
+    if($("#editBookModal").classList.contains("open")) closeEditBook();
+    else if($("#addBookModal").classList.contains("open")) closeAddBook();
     else closeDetail();
   }
 });
 $("#note").addEventListener("input",saveNote);
+
+$("#editBookBtn").addEventListener("click",openEditBook);
+$("#editBookClose").addEventListener("click",closeEditBook);
+$("#cancelEditBook").addEventListener("click",closeEditBook);
+$("#editBookModal").addEventListener("click",e=>{
+  if(e.target===$("#editBookModal")) closeEditBook();
+});
+$("#editBookForm").addEventListener("submit",e=>{
+  e.preventDefault();
+
+  const id=Number($("#editBookId").value);
+  const book=BOOKS.find(b=>Number(b.id)===id);
+  const msg=$("#editBookMessage");
+
+  if(!book){
+    msg.textContent="Güncellenecek kayıt bulunamadı.";
+    msg.className="form-message error";
+    return;
+  }
+
+  const title=$("#editTitle").value.trim();
+  const author=$("#editAuthor").value.trim();
+  const publisher=$("#editPublisher").value.trim();
+  const isbn=normalizeIsbnDisplay($("#editIsbn").value);
+  const pagesRaw=$("#editPages").value.trim();
+  const pages=pagesRaw ? Number(pagesRaw) : "";
+
+  if(!title || !author){
+    msg.textContent="Kitap adı ve yazar adı zorunludur.";
+    msg.className="form-message error";
+    return;
+  }
+
+  if(pagesRaw && (!Number.isInteger(pages) || pages<=0)){
+    msg.textContent="Sayfa sayısı pozitif bir tam sayı olmalıdır.";
+    msg.className="form-message error";
+    return;
+  }
+
+  // Başka bir kayıtta aynı ISBN varsa yanlışlıkla çakışma yaratma.
+  const cleaned=String(isbn||"").replace(/[^0-9Xx]/g,"").toUpperCase();
+  if(cleaned){
+    const duplicate=BOOKS.find(b=>
+      Number(b.id)!==id &&
+      String(b.isbn||"").replace(/[^0-9Xx]/g,"").toUpperCase()===cleaned
+    );
+    if(duplicate){
+      msg.textContent=`Bu ISBN başka bir kayıtta kullanılıyor (#${duplicate.id}: ${duplicate.title}).`;
+      msg.className="form-message error";
+      return;
+    }
+  }
+
+  book.title=title;
+  book.author=author;
+  book.publisher=publisher;
+  book.isbn=isbn;
+  book.pages=pages;
+
+  saveBookEdit(book);
+  activeBook=book;
+
+  stats();
+  render();
+  refreshActiveBookDetail();
+
+  msg.textContent="Kitap bilgileri güncellendi.";
+  msg.className="form-message success";
+
+  setTimeout(()=>{
+    closeEditBook();
+  },500);
+});
+
 $("#addBookBtn").addEventListener("click",openAddBook);
 $("#exportDataBtn").addEventListener("click",exportReferenceJS);
 $("#addBookClose").addEventListener("click",closeAddBook);
